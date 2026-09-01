@@ -6,18 +6,13 @@ import fitz
 st.title("Document Summarizer")
 
 st.write(
-    "Upload a document below and ask a question about it – GPT will answer! "
-    "To use this app, you need to provide an OpenAI API key, which you can get "
-    "[here](https://platform.openai.com/account/api-keys)."
+    "Upload a document below, then choose a summary type and model from the "
+    "sidebar – GPT will generate a summary for you!"
 )
 
-# Ask user for their OpenAI API key
-openai_api_key = st.text_input(
-    "OpenAI API Key",
-    type="password"
-)
+openai_api_key = st.secrets["openai_api_key"]
 
-client = None
+client = OpenAI(api_key=openai_api_key)
 
 # Create OpenAI client
 if openai_api_key:
@@ -38,11 +33,30 @@ if openai_api_key:
         st.error(f"Unable to connect to OpenAI: {e}")
         st.stop()
 
-    st.success("API key accepted! You can use the document Q&A app.")
+summary_type = st.sidebar.selectbox(
+    "Choose a summary type",
+    (
+        "Summarize in 100 words",
+        "Summarize in 2 connecting paragraphs",
+        "Summarize in 5 bullet points",
+    ),
+)
 
-else:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-
+use_advanced_model = st.sidebar.checkbox("Use advanced model")
+ 
+# Map the checkbox choice to an actual model name
+model = "gpt-5-mini" if use_advanced_model else "gpt-5-nano"
+ 
+instruction_map = {
+    "Summarize in 100 words": "Summarize the following document in about 100 words.",
+    "Summarize in 2 connecting paragraphs": (
+        "Summarize the following document in 2 connecting paragraphs."
+    ),
+    "Summarize in 5 bullet points": (
+        "Summarize the following document in 5 concise bullet points."
+    ),
+}
+instruction = instruction_map[summary_type]
 
 # Function for reading PDFs
 def read_pdf(file_obj):
@@ -71,15 +85,6 @@ def read_pdf(file_obj):
 uploaded_file = st.file_uploader(
     "Upload a document",
     type=["txt", "pdf"],
-    disabled=not openai_api_key,
-)
-
-
-# Ask question
-question = st.text_area(
-    "Now ask a question about the document!",
-    placeholder="Can you give me a short summary?",
-    disabled=uploaded_file is None,
 )
 
 
@@ -106,16 +111,14 @@ if uploaded_file is not None:
 
 
 # Answer question
-if uploaded_file is not None and question and client is not None:
-
+if uploaded_file is not None:
     messages = [
         {
             "role": "user",
             "content": (
-                f"Here's a document:\n\n"
+                f"{instruction}\n\n"
+                f"Document:\n\n"
                 f"{document}\n\n"
-                f"---\n\n"
-                f"Question: {question}"
             ),
         }
     ]
@@ -124,7 +127,7 @@ if uploaded_file is not None and question and client is not None:
 
         # Generate an answer using the OpenAI API
         stream = client.chat.completions.create(
-            model="gpt-5-nano",
+            model=model,
             messages=messages,
             stream=True,
         )
