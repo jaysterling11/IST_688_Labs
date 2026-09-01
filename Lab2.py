@@ -3,7 +3,7 @@ from openai import APIError, AuthenticationError, OpenAI
 import fitz
 
 # Show title and description
-st.title("MY Document Question Answering")
+st.title("Document Summarizer")
 
 st.write(
     "Upload a document below and ask a question about it – GPT will answer! "
