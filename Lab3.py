@@ -40,9 +40,17 @@ if prompt := st.chat_input("Ask me anything!"):
 
     client = st.session_state.client
 
+    # Conversation buffer:
+    # Keep the greeting plus the last 4 messages
+    # (2 user messages + 2 LLM responses)
+    conversation = (
+        [st.session_state.messages[0]]
+        + st.session_state.messages[-4:]
+    )
+
     stream = client.chat.completions.create(
         model=model_to_use,
-        messages=st.session_state.messages,
+        messages=conversation,
         stream=True
     )
 
