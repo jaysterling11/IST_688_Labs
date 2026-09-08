@@ -31,19 +31,24 @@ for msg in st.session_state.messages:
     chat_msg.write(msg["content"])
 
 if prompt := st.chat_input("Ask me anything!"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append(
+        {"role": "user", "content": prompt}
+    )
+
     with st.chat_message("user"):
         st.markdown(prompt)
 
     client = st.session_state.client
+
     stream = client.chat.completions.create(
         model=model_to_use,
         messages=st.session_state.messages,
         stream=True
     )
 
-    
-with st.chat_message("assistant"):
-    response = st.write_stream(stream)
+    with st.chat_message("assistant"):
+        response = st.write_stream(stream)
 
-st.session_state.messages.append({"role": "assistant", "content": response})
+    st.session_state.messages.append(
+        {"role": "assistant", "content": response}
+    )
