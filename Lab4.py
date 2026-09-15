@@ -1,10 +1,21 @@
 import streamlit as st
-import requests
-from bs4 import BeautifulSoup
 from openai import OpenAI
-from google import genai
+import sys
+import chromadb
+from pathlib import Path
+from PyPDF2 import PdfReader
 
-st.title("Baseball Question Answering Chatbot")
+
+__import__('pysqlite3')
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
+chroma_client = chromadb.PersistentClient(path='./ChromaDB_for_Lab')
+collection = chroma_client.get_or_create_collection('Lab4collection')
+
+
+
+
+st.title("MY Lab 4 Chatbot Using RAG")
 
 st.write(
     "This chatbot answers questions using information from up to two "

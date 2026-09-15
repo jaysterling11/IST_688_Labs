@@ -1,4 +1,7 @@
 streamlit
 openai
-PyMuPDF
+chromadb
+pysqlite3-binary
+PyPDF2
 numpy
+protobuf==3.35
