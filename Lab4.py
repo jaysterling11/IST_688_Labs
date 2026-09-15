@@ -86,17 +86,16 @@ st.write(
 st.sidebar.header("Chatbot Settings")
 st.sidebar.write("Model: gpt-5-mini")
 
-# Part A
-test_topic = st.sidebar.text_input('Test topic', placeholder='e.g., Generative AI')
-if test_topic:
-     client = st.session_state.openai_client
-     response = client.embeddings.create(input=test_topic, model='text-embedding-3-small')
-     query_embedding = response.data[0].embedding
-     results = collection.query(query_embeddings=[query_embedding], n_results=3)
-     st.sidebar.subheader(f"Results for: {test_topic}")
-     for i in range(len(results['documents'][0])):
-         doc_id = results['ids'][0][i]
-         st.sidebar.write(f"**{i+1}. {doc_id}**")
+# test_topic = st.sidebar.text_input('Test topic', placeholder='e.g., Generative AI')
+# if test_topic:
+#     client = st.session_state.openai_client
+#     response = client.embeddings.create(input=test_topic, model='text-embedding-3-small')
+#     query_embedding = response.data[0].embedding
+#     results = collection.query(query_embeddings=[query_embedding], n_results=3)
+#     st.sidebar.subheader(f"Results for: {test_topic}")
+#     for i in range(len(results['documents'][0])):
+#         doc_id = results['ids'][0][i]
+#         st.sidebar.write(f"**{i+1}. {doc_id}**")
 
 # Part B
 if "messages" not in st.session_state:
