@@ -5,3 +5,4 @@ pysqlite3-binary
 PyPDF2
 numpy
 requests
+PyMuPDF

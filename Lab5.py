@@ -133,13 +133,13 @@ if 'openai_client' not in st.session_state:
     except Exception:
         st.session_state.openai_client = None
 
-st.title("👕 What to Wear Bot")
+st.title("Lab 5: What to Wear Bot")
  
 st.write(
     "Enter a city, zip code, airport code, or landmark below and this bot "
     "will check today's weather (via wttr.in) and suggest what to wear and "
-    "which outdoor activities make sense. Under the hood, the weather lookup "
-    "is provided to the LLM as a tool call — the model decides when it needs "
+    "which outdoor activities make sense. The weather lookup "
+    "is provided to the LLM as a tool call. The model decides when it needs "
     "the weather and requests it, rather than us fetching it ahead of time."
 )
  
