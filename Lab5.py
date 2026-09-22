@@ -1,177 +1,127 @@
+import requests
+import json
 import streamlit as st
 from openai import OpenAI
-import sys
-import os
-from pathlib import Path
-from PyPDF2 import PdfReader
 
-__import__('pysqlite3')
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+DEFAULT_LOCATION = "Syracuse, NY"
+MODEL = "gpt-4o-mini"
 
-import chromadb
-
-if 'openai_client' not in st.session_state:
+def get_current_weather(location):
+    url = f'https://wttr.in/{location}?format=j1'
+    response = requests.get(url, timeout=10)
+    if response.status_code != 200:
+        raise Exception(f'wttr.in error: status {response.status_code}')
     try:
-        openai_api_key = st.secrets["openai_api_key"]
-        st.session_state.openai_client = OpenAI(api_key=openai_api_key) if openai_api_key else None
-    except Exception:
-        st.session_state.openai_client = None
+        data = response.json()
+    except ValueError:
+        # unknown locations come back as plain text, not JSON
+        raise Exception(f'Could not find a location named {location}')
 
-DATA_FOLDER = "./Lab-04-Data/"  
- 
-chroma_client = chromadb.PersistentClient(path='./ChromaDB_for_Lab')
-collection = chroma_client.get_or_create_collection('Lab4Collection')
- 
- 
-def extract_text_from_pdf(pdf_path):
-    reader = PdfReader(pdf_path)
-    text = ""
-    for page in reader.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text += page_text + "\n"
-    return text
- 
- 
-def add_to_collection(collection, text, filename):
-    client = st.session_state.openai_client
-    response = client.embeddings.create(
-        model="text-embedding-3-small",
-        input=text
-    )
-    embedding = response.data[0].embedding
- 
-    collection.add(
-        documents=[text],
-        ids=[filename],
-        embeddings=[embedding],
-        metadatas=[{"filename": filename}]
-    )
- 
- 
-def load_pdfs_to_collection(folder_path, collection):
-    loaded_files = []
-    folder = Path(folder_path)
- 
-    for pdf_path in folder.glob("*.pdf"):
-        filename = pdf_path.name
-        text = extract_text_from_pdf(str(pdf_path))
- 
-        if text.strip():
-            add_to_collection(collection, text, filename)
-            loaded_files.append(filename)
- 
-    return loaded_files
- 
- 
-if 'Lab4_VectorDB' not in st.session_state:
-    if collection.count() == 0:
-        with st.spinner("Building vector database from course PDFs..."):
-            loaded = load_pdfs_to_collection(DATA_FOLDER, collection)
-            st.sidebar.success(f"Loaded {len(loaded)} PDFs into ChromaDB.")
-    st.session_state.Lab4_VectorDB = collection
- 
-collection = st.session_state.Lab4_VectorDB
+    current = data['current_condition'][0]
+    today = data['weather'][0]
+    chance_of_rain = max(int(h.get("chanceofrain", 0)) for h in today["hourly"])
 
-st.title("Lab 4 Chatbot using RAG (ChromaDB)")
-
-st.write(
-    "This chatbot answers questions about Syracuse iSchool course syllabi "
-    "using a ChromaDB vector database built from the course PDFs. "
-    "It retrieves the most relevant syllabus excerpts for each question and "
-    "passes them to the LLM as context. "
-    "A short-term memory buffer of the last 6 messages is also maintained."
-)
-
-st.sidebar.header("Chatbot Settings")
-st.sidebar.write("Model: gpt-5-mini")
-
-# test_topic = st.sidebar.text_input('Test topic', placeholder='e.g., Generative AI')
-# if test_topic:
-#     client = st.session_state.openai_client
-#     response = client.embeddings.create(input=test_topic, model='text-embedding-3-small')
-#     query_embedding = response.data[0].embedding
-#     results = collection.query(query_embeddings=[query_embedding], n_results=3)
-#     st.sidebar.subheader(f"Results for: {test_topic}")
-#     for i in range(len(results['documents'][0])):
-#         doc_id = results['ids'][0][i]
-#         st.sidebar.write(f"**{i+1}. {doc_id}**")
-
-# Part B
-if "messages" not in st.session_state:
-    st.session_state.messages = []
- 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.write(message["content"])
- 
-prompt = st.chat_input("Ask a question about the courses...")
- 
- 
-def get_relevant_context(user_prompt, n_results=3):
-    client = st.session_state.openai_client
-    response = client.embeddings.create(
-        input=user_prompt,
-        model='text-embedding-3-small'
-    )
-    query_embedding = response.data[0].embedding
- 
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=n_results
-    )
- 
-    context_pieces = []
-    sources = []
-    for i in range(len(results['documents'][0])):
-        doc_text = results['documents'][0][i]
-        doc_id = results['ids'][0][i]
-        context_pieces.append(f"--- From {doc_id} ---\n{doc_text}")
-        sources.append(doc_id)
- 
-    return "\n\n".join(context_pieces), sources
- 
- 
-if prompt:
-    if st.session_state.openai_client is None:
-        st.error("OpenAI API key was not found. Please add openai_api_key to Streamlit secrets "
-                  "(needed for embeddings, even if you chat with Gemini).")
-        st.stop()
- 
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.write(prompt)
- 
-    # Retrieve relevant context from ChromaDB
-    rag_context, sources = get_relevant_context(prompt)
- 
-    system_prompt = {
-        "role": "system",
-        "content": (
-            "You are a helpful assistant that answers questions about Syracuse "
-            "iSchool courses using the syllabus excerpts provided below. "
-            "Base your answer on this retrieved context when it is relevant. "
-            "If the answer isn't in the provided context, say so clearly. "
-            "Always tell the user which source document(s) your answer is "
-            "based on, and make clear when you are using information "
-            "retrieved from the RAG knowledge base versus general knowledge.\n\n"
-            f"RETRIEVED CONTEXT:\n\n{rag_context}"
-        )
+    return {
+        "location": location,
+        "temperature_F": float(current["temp_F"]),
+        "feels_like_F": float(current["FeelsLikeF"]),
+        "description": current["weatherDesc"][0]["value"],
+        "humidity_pct": int(current["humidity"]),
+        "wind_speed_mph": float(current["windspeedMiles"]),
+        "uv_index": int(current.get("uvIndex", 0)),
+        "chance_of_rain_pct": chance_of_rain,
+        "today_max_F": float(today["maxtempF"]),
+        "today_min_F": float(today["mintempF"]),
     }
+
+weather_tool = {
+    "type": "function",
+    "function": {
+        "name": "get_current_weather",
+        "description": (
+            "Get the current weather and today's forecast summary for a "
+            "given location, to be used for clothing and activity advice."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": (
+                        "The city, zip code, airport code, or landmark to "
+                        f"get weather for. Default to '{DEFAULT_LOCATION}' "
+                        "if the user did not specify a location."
+                    ),
+                }
+            },
+            "required": ["location"],
+        },
+    },
+}
  
-    conversation_buffer = st.session_state.messages[-6:]
-    conversation = [system_prompt] + conversation_buffer
  
+def call_weather_tool(tool_call) -> str:
+    args = json.loads(tool_call.function.arguments)
+    location = args.get("location")
     try:
-        with st.chat_message("assistant"):
-            stream = st.session_state.openai_client.chat.completions.create(
-                model="gpt-5-mini",
-                messages=conversation,
-                stream=True
-            )
-            response = st.write_stream(stream)
- 
-        st.session_state.messages.append({"role": "assistant", "content": response})
- 
+        weather_data = get_current_weather(location)
     except Exception as e:
-        st.error(f"OpenAI API error: {e}")
+        weather_data = {"error": str(e)}
+    return json.dumps(weather_data)
+ 
+ 
+def get_outfit_advice(client: OpenAI, location_input: str) -> str:
+    user_prompt = (
+        f"What should I wear today and what outdoor activities would be "
+        f"appropriate, for the location: {location_input}?"
+        if location_input.strip()
+        else (
+            "What should I wear today and what outdoor activities would be "
+            "appropriate? I didn't specify a location, so use the default."
+        )
+    )
+ 
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a helpful assistant that gives clothing and outdoor "
+                "activity suggestions based on current weather. Always use "
+                "the get_current_weather tool to check conditions before "
+                f"giving advice. If no location is given, use '{DEFAULT_LOCATION}' "
+                "as the default."
+            ),
+        },
+        {"role": "user", "content": user_prompt},
+    ]
+ 
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=messages,
+        tools=[weather_tool],
+        tool_choice="auto",
+    )
+    response_message = response.choices[0].message
+    messages.append(response_message.to_dict())
+ 
+    tool_calls = response_message.tool_calls
+    if not tool_calls:
+        return response_message.content
+ 
+    for tool_call in tool_calls:
+        if tool_call.function.name == "get_current_weather":
+            result = call_weather_tool(tool_call)
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_call.function.name,
+                    "content": result,
+                }
+            )
+ 
+    final_response = client.chat.completions.create(
+        model=MODEL,
+        messages=messages,
+    )
+    return final_response.choices[0].message.content
