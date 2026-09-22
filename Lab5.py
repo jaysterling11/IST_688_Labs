@@ -125,3 +125,39 @@ def get_outfit_advice(client: OpenAI, location_input: str) -> str:
         messages=messages,
     )
     return final_response.choices[0].message.content
+
+if 'openai_client' not in st.session_state:
+    try:
+        openai_api_key = st.secrets["openai_api_key"]
+        st.session_state.openai_client = OpenAI(api_key=openai_api_key) if openai_api_key else None
+    except Exception:
+        st.session_state.openai_client = None
+
+st.title("👕 What to Wear Bot")
+ 
+st.write(
+    "Enter a city, zip code, airport code, or landmark below and this bot "
+    "will check today's weather (via wttr.in) and suggest what to wear and "
+    "which outdoor activities make sense. Under the hood, the weather lookup "
+    "is provided to the LLM as a tool call — the model decides when it needs "
+    "the weather and requests it, rather than us fetching it ahead of time."
+)
+ 
+st.sidebar.header("Chatbot Settings")
+st.sidebar.write(f"Model: {MODEL}")
+ 
+location_input = st.text_input(
+    "Where are you?", placeholder=f"e.g. {DEFAULT_LOCATION}"
+)
+ 
+if st.button("Get suggestions"):
+    if st.session_state.openai_client is None:
+        st.error("OpenAI API key was not found. Please add openai_api_key to Streamlit secrets.")
+        st.stop()
+ 
+    with st.spinner("Checking the weather and thinking..."):
+        try:
+            advice = get_outfit_advice(st.session_state.openai_client, location_input)
+            st.markdown(advice)
+        except Exception as e:
+            st.error(f"Something went wrong: {e}")
