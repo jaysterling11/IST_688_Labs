@@ -155,7 +155,7 @@ if st.button("Get suggestions"):
         st.error("OpenAI API key was not found. Please add openai_api_key to Streamlit secrets.")
         st.stop()
  
-    with st.spinner("Checking the weather and thinking..."):
+    with st.spinner("Checking the weather and thinking"):
         try:
             advice = get_outfit_advice(st.session_state.openai_client, location_input)
             st.markdown(advice)
