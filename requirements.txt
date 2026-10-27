@@ -6,3 +6,5 @@ PyPDF2
 numpy
 requests
 PyMuPDF
+langchain
+langchain-openai
