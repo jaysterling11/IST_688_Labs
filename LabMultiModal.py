@@ -148,3 +148,9 @@ if st.button("Analyze", type="primary"):
             st.markdown(result)
         else:
             st.warning("The model returned an empty response. Please try again.")
+
+# 9a. The image is base64-encoded into a data URL and sent as an input_image block with the question in one Responses API call, so the model sees the actual pixels. Audio takes two calls: the raw file is uploaded to the transcriptions endpoint (gpt-transcribe), which returns only text, and that transcript is then sent as input_text to the Responses API. The model never hears the audio; it only reads the words.
+
+# 9b. With the original prompt, the format varied. The boat image got a one-line summary and a numbered list, while the audio got a paragraph, a list, and an extra “In summary” paragraph, and it described the speaker’s tone even though it only had text. The revised prompt added fixed Summary, Key points, and Answer sections, rules for each content type, a requirement to say where in the upload the answer came from, and a 250-word limit, which made the responses consistent and grounded in the upload. When I asked a question the source could not answer (what year the boat was built), the revised app said “The uploaded material doesn’t say.” and described what the image did show instead of guessing.
+
+# 9c. Transcription keeps only the words, so it loses tone, emotion, emphasis, pacing, who is speaking, and non-speech sound like music/background noise. My test clip was a self-made appropriate diss track, so the beat and vocal delivery were lost, and the model could only guess the tone from the lyrics. Video would also need the audio track extracted and transcribed, frames sampled and sent as images, frames and transcript lined up by timestamp, and long videos split into chunks to stay within size, token, and cost limits.
