@@ -8,3 +8,4 @@ requests
 PyMuPDF
 langchain
 langchain-openai
+openai-agents

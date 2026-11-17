@@ -7,6 +7,7 @@ lab4_page = st.Page("Lab4.py", title="Lab 4 - RAG Pipeline with Vector DB", icon
 lab5_page = st.Page("Lab5.py", title="Lab 5 - The “What to Wear” Bot", icon="5️⃣")
 lab6_page = st.Page("LabLangChain.py", title="Lab 6 - LangChain: The “What to Wear” Bot", icon="6️⃣")
 lab8_page = st.Page("LabMultiModal.py", title="Lab 8 - LLM & Audio/Images: The See and Hear Assistant", icon="8️⃣")
+lab9_page = st.Page("LabMultiAgent.py", title="Lab 9 -  The “What to Wear” Crew Bot", icon="9️⃣")
 
-pg = st.navigation([lab1_page, lab2_page, lab3_page, lab4_page, lab5_page, lab6_page, lab8_page])
+pg = st.navigation([lab1_page, lab2_page, lab3_page, lab4_page, lab5_page, lab6_page, lab8_page, lab9_page])
 pg.run()
