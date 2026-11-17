@@ -1,13 +1,8 @@
-import asyncio, os, time
+import asyncio, time
 import requests
 import streamlit as st
-from agents import Agent, Runner, function_tool
-
-try:
-    os.environ["openai_api_key"] = st.secrets["openai_api_key"]
-except Exception:
-    st.error("OpenAI API key was not found. Please add openai_api_key to Streamlit secrets.")
-    st.stop()
+from openai import AsyncOpenAI
+from agents import Agent, Runner, function_tool, set_default_openai_client
 
 MODEL = "gpt-5-mini"
 DEFAULT_LOCATION = "Syracuse, NY"
@@ -39,6 +34,7 @@ def get_current_weather(location):
         "today_min_F": float(today["mintempF"]),
     }
 
+
 @function_tool
 def get_weather(location: str = DEFAULT_LOCATION) -> dict:
     """Get the current weather and today's forecast for one location.
@@ -57,6 +53,7 @@ def get_weather(location: str = DEFAULT_LOCATION) -> dict:
         return get_current_weather(location)
     except Exception as e:
         return {"error": str(e)}
+
 
 weather_agent = Agent(
     name="Weather agent",
@@ -142,6 +139,7 @@ manager_agent = Agent(
     model=MODEL,
 )
 
+
 single_agent = Agent(
     name="Single agent",
     instructions=(
@@ -160,16 +158,26 @@ single_agent = Agent(
     model=MODEL,
 )
 
-
 @st.cache_resource
 def get_event_loop():
     return asyncio.new_event_loop()
+
 
 def run(agent, prompt):
     start = time.perf_counter()
     result = get_event_loop().run_until_complete(Runner.run(agent, prompt))
     return result, time.perf_counter() - start
 
+if 'openai_async_client' not in st.session_state:
+    try:
+        openai_api_key = st.secrets["openai_api_key"]
+        st.session_state.openai_async_client = AsyncOpenAI(api_key=openai_api_key) if openai_api_key else None
+    except Exception:
+        st.session_state.openai_async_client = None
+
+
+if st.session_state.openai_async_client is not None:
+    set_default_openai_client(st.session_state.openai_async_client)
 
 st.title("Lab 9: The What to Wear Crew")
 st.write(
@@ -191,6 +199,10 @@ if "runs" not in st.session_state:
     st.session_state.runs = []
 
 if st.button("Get advice"):
+    if st.session_state.openai_async_client is None:
+        st.error("OpenAI API key was not found. Please add openai_api_key to Streamlit secrets.")
+        st.stop()
+
     location = location_input.strip() or DEFAULT_LOCATION
     agent = manager_agent if mode.startswith("Team") else single_agent
 
